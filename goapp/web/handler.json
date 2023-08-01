@@ -4,6 +4,7 @@
   "Icon": {
     "Default": "/web/logo-192.png",
     "Large": "/web/logo-512.png",
+    "SVG": "/web/logo.svg",
     "AppleTouch": "/web/logo-192.png"
   },
   "BackgroundColor": "#222",

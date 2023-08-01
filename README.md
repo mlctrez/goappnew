@@ -29,7 +29,7 @@ The following features are included:
 
 ## Usage
 
-* gonew github.com/mlctrez/goappnew@v0.1.1 github.com/mlctrez/goappnewtest 
+* gonew github.com/mlctrez/goappnew@v0.1.3 github.com/mlctrez/goappnewtest 
 * cd goappnewtest
 * Run `make` with no arguments to start the server in dev mode.
 

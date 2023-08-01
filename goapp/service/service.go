@@ -112,7 +112,7 @@ func buildGinEngine() (engine *gin.Engine, err error) {
 		// omit some common paths to reduce startup logging noise
 		skipPaths := []string{
 			"/app.css", "/app.js", "/app-worker.js", "/manifest.webmanifest", "/wasm_exec.js",
-			"/web/logo-192.png", "/web/logo-512.png", "/web/app.wasm"}
+			"/web/logo-192.png", "/web/logo-512.png", "/web/logo.svg", "/web/app.wasm"}
 		engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: skipPaths}))
 	}
 	engine.Use(gin.Recovery(), brotli.Brotli(brotli.DefaultCompression))
