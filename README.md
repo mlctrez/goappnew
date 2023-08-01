@@ -29,7 +29,8 @@ The following features are included:
 
 ## Usage
 
-* Install dependencies using `go mod tidy`
+* gonew github.com/mlctrez/goappnew@v0.1.1 github.com/mlctrez/goappnewtest 
+* cd goappnewtest
 * Run `make` with no arguments to start the server in dev mode.
 
 created by [tigwen](https://github.com/mlctrez/tigwen)
