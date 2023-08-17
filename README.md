@@ -25,7 +25,6 @@ The following features are included:
 * The `app.Handler` configuration is loaded from a json file in the web directory.
 * When running in dev mode, [app updates](https://go-app.dev/lifecycle#listen-for-app-updates) are automatic.
 * Uses just a single folder `goapp` so it can be copied into an existing codebase.
-* Checks are performed to prevent overwriting any existing files.
 * Less than 300 lines of code - easy to understand and modify.
 
 ## Usage

@@ -193,7 +193,15 @@ func setupGoAppHandler(engine *gin.Engine) (err error) {
 		handler.Version = fmt.Sprintf("%s@%s", goapp.Version, goapp.Commit)
 	}
 
-	engine.NoRoute(gin.WrapH(handler))
+	goAppHandlerFunc := gin.WrapH(handler)
+	engine.NoRoute(func(c *gin.Context) {
+		// in go-app version v9.8.0, w.WriteHeader(http.StatusOK) was removed when serving the index page
+		// https://github.com/maxence-charriere/go-app/commit/11db7b1782f093cd86cc7fe2de63c70b8b01b877#diff-989eea7a3dfccc6b23008119904f7c3cfa9e126cce2de507ea30b0d33b41905cL896
+		// when the NoRoute handler functions are called, gin has already set the status to 404
+		// this sets it to 200 so go-app version > v9.8.0 will still workk
+		c.Writer.WriteHeader(http.StatusOK)
+		goAppHandlerFunc(c)
+	})
 	return nil
 }
 
