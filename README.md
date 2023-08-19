@@ -18,14 +18,13 @@ The following features are included:
 * The [gin web framework](https://github.com/gin-gonic/gin) is included and brotli compression middleware
   is pre-configured.
 * It supports the wasm file size header to correctly display progress on the loading screen when using compression.
-* The `app.Handler` configuration is loaded from a json file in the web directory.
 * When running in dev mode, [app updates](https://go-app.dev/lifecycle#listen-for-app-updates) are automatic.
 * Uses just a single folder `goapp` so it can be copied into an existing codebase.
 * Less than 300 lines of code - easy to understand and modify.
 
 ## Usage
 
-* gonew github.com/mlctrez/goappnew@v0.2.0 github.com/mlctrez/goappnewtest 
+* gonew github.com/mlctrez/goappnew@v0.2.5 github.com/mlctrez/goappnewtest 
 * cd goappnewtest
 * Run `make` with no arguments to start the server in dev mode.
 
