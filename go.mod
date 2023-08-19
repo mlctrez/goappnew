@@ -6,12 +6,12 @@ require (
 	github.com/anargu/gin-brotli v0.0.0-20220116052358-12bf532d5267
 	github.com/gin-gonic/gin v1.9.1
 	github.com/kardianos/service v1.2.2
-	github.com/maxence-charriere/go-app/v9 v9.7.3
+	github.com/maxence-charriere/go-app/v9 v9.8.0
 	github.com/mlctrez/servicego v1.4.6
 )
 
 require (
-	github.com/andybalholm/brotli v1.0.1 // indirect
+	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect

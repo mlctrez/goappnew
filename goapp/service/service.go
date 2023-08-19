@@ -4,7 +4,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	brotli "github.com/anargu/gin-brotli"
@@ -18,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -29,194 +29,207 @@ func Entry() {
 
 var _ servicego.Service = (*Service)(nil)
 
-var DevEnv = os.Getenv("DEV")
-var IsDev = DevEnv != ""
+const WasmHeader = "Wasm-Content-Length"
 
 type Service struct {
 	servicego.Defaults
-	serverShutdown func(ctx context.Context) error
+	listener      net.Listener
+	handler       *app.Handler
+	engine        *gin.Engine
+	server        *http.Server
+	staticHandler http.Handler
+	isDev         bool
+	mappings      map[string]gin.HandlerFunc
 }
 
 func (s *Service) Start(_ service.Service) (err error) {
 
-	var listener net.Listener
-	address := listenAddress()
-	if listener, err = net.Listen("tcp4", address); err != nil {
-		return
-	}
-	fmt.Printf("listening on http://%s\n", address)
+	s.isDev = os.Getenv("DEV") != ""
+	s.mappings = make(map[string]gin.HandlerFunc)
+	s.staticHandler = http.FileServer(http.FS(goapp.WebFs))
 
-	server := &http.Server{}
-	s.serverShutdown = server.Shutdown
-
-	if server.Handler, err = buildGinEngine(); err != nil {
-		return
+	steps := []func() error{
+		s.setupHandler, s.setupEngine,
+		s.goAppMappings, s.staticMappings, s.mappingsToGin,
+		s.setupApiEndpoints, s.listen,
 	}
-	go func() {
-		var serveErr error
-		if strings.HasSuffix(listener.Addr().String(), ":443") {
-			serveErr = server.ServeTLS(listener, "cert.pem", "cert.key")
-		} else {
-			serveErr = server.Serve(listener)
+
+	for _, step := range steps {
+		if err = step(); err != nil {
+			return err
 		}
-		if serveErr != nil && serveErr != http.ErrServerClosed {
-			_ = s.Log().Error(err)
-		}
-	}()
+	}
+	go s.runHttpServer()
 
 	return nil
 }
 
-func (s *Service) Stop(_ service.Service) (err error) {
-	if s.serverShutdown != nil {
-
-		stopContext, cancel := context.WithTimeout(context.Background(), time.Second*2)
-		defer cancel()
-
-		err = s.serverShutdown(stopContext)
-		if errors.Is(err, context.Canceled) {
-			os.Exit(-1)
-		}
-	}
-	_ = s.Log().Info("http.Server.Shutdown success")
-	return
-}
-
-func listenAddress() string {
-
-	if address := os.Getenv("ADDRESS"); address != "" {
-		return address
-	}
-	if port := os.Getenv("PORT"); port == "" {
-		return "localhost:8080"
-	} else {
-		return "localhost:" + port
-	}
-
-}
-
-type engineSetup func(*gin.Engine) error
-
-func buildGinEngine() (engine *gin.Engine, err error) {
-
-	if !IsDev {
+func (s *Service) setupEngine() (err error) {
+	if !s.isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	engine = gin.New()
-
+	s.engine = gin.New()
 	// required for go-app to work correctly
-	engine.RedirectTrailingSlash = false
+	s.engine.RedirectTrailingSlash = false
 
-	if IsDev {
-		// omit some common paths to reduce startup logging noise
-		skipPaths := []string{
-			"/app.css", "/app.js", "/app-worker.js", "/manifest.webmanifest", "/wasm_exec.js",
-			"/web/logo-192.png", "/web/logo-512.png", "/web/logo.svg", "/web/app.wasm"}
-		engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: skipPaths}))
+	middleware := []gin.HandlerFunc{gin.Recovery()}
+	if s.isDev {
+		config := gin.LoggerConfig{SkipPaths: []string{"/app-worker.js"}}
+		middleware = append(middleware, gin.LoggerWithConfig(config))
 	}
-	engine.Use(gin.Recovery(), brotli.Brotli(brotli.DefaultCompression))
-
-	setups := []engineSetup{setupWasmSizeHeader, setupStaticHandlers, setupApiEndpoints, setupGoAppHandler}
-
-	for _, setup := range setups {
-		if err = setup(engine); err != nil {
-			return nil, err
-		}
+	if os.Getenv("GOAPP_USE_COMPRESSION") == "" {
+		s.engine.Use(middleware...)
+		return nil
 	}
 
-	return
+	var wasmSize int64
+	if wasmSize, err = s.wasmSize(); err != nil {
+		return err
+	}
+	s.handler.WasmContentLengthHeader = WasmHeader
+	wasmHeaderHandler := (&fixedHeader{key: WasmHeader, value: fmt.Sprintf("%d", wasmSize)}).HandlerFunc
+	middleware = append(middleware, wasmHeaderHandler, brotli.Brotli(brotli.DefaultCompression))
+
+	s.engine.Use(middleware...)
+	return nil
 }
 
-func setupWasmSizeHeader(engine *gin.Engine) (err error) {
-
+func (s *Service) wasmSize() (wasmSize int64, err error) {
 	var wasmFile fs.File
 	if wasmFile, err = goapp.WebFs.Open("web/app.wasm"); err != nil {
-		return
+		return 0, err
 	}
 	defer func() { _ = wasmFile.Close() }()
 
 	var stat fs.FileInfo
 	if stat, err = wasmFile.Stat(); err != nil {
-		return
+		return 0, err
 	}
-	wasmSize := stat.Size()
-
-	engine.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Wasm-Content-Length", fmt.Sprintf("%d", wasmSize))
-		c.Next()
-	})
-
-	return
+	return stat.Size(), nil
 }
 
-func setupStaticHandlers(engine *gin.Engine) (err error) {
-
-	staticHandler := http.FileServer(http.FS(goapp.WebFs))
-	engine.GET("/web/:path", gin.WrapH(staticHandler))
-
-	if _, err = fs.Stat(goapp.WebFs, "web/app.css"); err == nil {
-		//  use provided web/app.css instead of app.css provided by go-app
-		engine.GET("/app.css", func(c *gin.Context) {
-			c.Redirect(http.StatusTemporaryRedirect, "/web/app.css")
-		})
+func (s *Service) setupHandler() (err error) {
+	s.handler = &app.Handler{Env: make(app.Environment)}
+	s.handler.Scripts = make([]string, 0)
+	s.handler.Styles = make([]string, 0)
+	if s.isDev {
+		s.handler.AutoUpdateInterval = time.Second * 3
+		s.handler.Version = ""
+		s.handler.Env["DEV"] = "1"
 	} else {
-		err = nil
+		s.handler.AutoUpdateInterval = time.Hour
+		s.handler.Version = fmt.Sprintf("%s@%s", goapp.Version, goapp.Commit)
 	}
 
-	return
-}
-
-func setupApiEndpoints(engine *gin.Engine) error {
-	// setup other api endpoints here
 	return nil
 }
 
-func setupGoAppHandler(engine *gin.Engine) (err error) {
-
-	var handler *app.Handler
-
-	// if dynamic customization of other app.Handler fields is required,
-	// just build programmatically and skip the goAppHandlerFromJson() call
-	if handler, err = goAppHandlerFromJson(); err != nil {
-		return
-	}
-
-	handler.WasmContentLengthHeader = "Wasm-Content-Length"
-	handler.Env["DEV"] = os.Getenv("DEV")
-
-	if IsDev {
-		handler.AutoUpdateInterval = time.Second * 3
-		handler.Version = ""
-	} else {
-		handler.AutoUpdateInterval = time.Hour
-		handler.Version = fmt.Sprintf("%s@%s", goapp.Version, goapp.Commit)
-	}
-
-	goAppHandlerFunc := gin.WrapH(handler)
-	engine.NoRoute(func(c *gin.Context) {
-		// in go-app version v9.8.0, w.WriteHeader(http.StatusOK) was removed when serving the index page
-		// https://github.com/maxence-charriere/go-app/commit/11db7b1782f093cd86cc7fe2de63c70b8b01b877#diff-989eea7a3dfccc6b23008119904f7c3cfa9e126cce2de507ea30b0d33b41905cL896
-		// when the NoRoute handler functions are called, gin has already set the status to 404
-		// this sets it to 200 so go-app version > v9.8.0 will still workk
-		c.Writer.WriteHeader(http.StatusOK)
-		goAppHandlerFunc(c)
-	})
+func (s *Service) goAppMappings() (err error) {
+	goAppHandlerFunc := (&goAppHandler{handler: s.handler}).HandlerFunc
+	s.mappings["/"] = goAppHandlerFunc
+	s.mappings["/app.js"] = goAppHandlerFunc
+	s.mappings["/app-worker.js"] = goAppHandlerFunc
+	s.mappings["/wasm_exec.js"] = goAppHandlerFunc
+	s.mappings["/app.css"] = goAppHandlerFunc
+	s.mappings["/manifest.webmanifest"] = goAppHandlerFunc
+	s.mappings["/manifest.json"] = goAppHandlerFunc
 	return nil
 }
 
-func goAppHandlerFromJson() (handler *app.Handler, err error) {
-
-	var file fs.File
-	if file, err = goapp.WebFs.Open("web/handler.json"); err != nil {
-		return
-	}
-	defer func() { _ = file.Close() }()
-
-	handler = &app.Handler{}
-	if err = json.NewDecoder(file).Decode(handler); err != nil {
-		return
+func (s *Service) staticMappings() (err error) {
+	var dir []fs.DirEntry
+	if dir, err = goapp.WebFs.ReadDir("web"); err != nil {
+		return err
 	}
 
+	for _, entry := range dir {
+		name := entry.Name()
+		path := fmt.Sprintf("/%s", name)
+		if _, exists := s.mappings[path]; exists {
+			s.mappings[path] = (&staticRemap{name: name, httpHandler: s.staticHandler}).HandlerFunc
+		} else {
+			if strings.HasSuffix(name, ".js") {
+				s.handler.Scripts = append(s.handler.Scripts, fmt.Sprintf("/web/%s", name))
+			}
+			if strings.HasSuffix(name, ".css") {
+				s.handler.Styles = append(s.handler.Styles, fmt.Sprintf("/web/%s", name))
+			}
+		}
+	}
+
+	s.mappings["/web/:path"] = (&staticHandler{httpHandler: s.staticHandler}).HandlerFunc
+
+	return nil
+}
+
+func (s *Service) mappingsToGin() (err error) {
+	var sortedMappings []string
+	for k := range s.mappings {
+		sortedMappings = append(sortedMappings, k)
+	}
+
+	sort.Strings(sortedMappings)
+	for _, k := range sortedMappings {
+		s.engine.GET(k, s.mappings[k])
+	}
+
+	return nil
+}
+
+func (s *Service) Stop(_ service.Service) (err error) {
+	if s.server != nil {
+		stopContext, cancel := context.WithTimeout(context.Background(), time.Second*2)
+		defer cancel()
+
+		err = s.server.Shutdown(stopContext)
+		if errors.Is(err, context.Canceled) {
+			os.Exit(-1)
+		}
+		_ = s.Log().Info("http.Server.Shutdown success")
+	}
 	return
+}
+
+func (s *Service) setupApiEndpoints() (err error) {
+	// setup additional api endpoints here
+	return
+}
+
+func ListenAddress() string {
+	if address := os.Getenv("ADDRESS"); address != "" {
+		return address
+	}
+
+	if port := os.Getenv("PORT"); port == "" {
+		return "localhost:8080"
+	} else {
+		return "localhost:" + port
+	}
+}
+
+func (s *Service) listen() (err error) {
+	address := ListenAddress()
+	if s.listener, err = net.Listen("tcp4", address); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) runHttpServer() {
+	s.server = &http.Server{Handler: s.engine}
+
+	//goland:noinspection ALL
+	addressString := s.listener.Addr().String()
+	_ = s.Log().Infof("listening on http://%s\n", addressString)
+
+	var serveErr error
+	if strings.HasSuffix(addressString, ":443") {
+		serveErr = s.server.ServeTLS(s.listener, "cert.pem", "cert.key")
+	} else {
+		serveErr = s.server.Serve(s.listener)
+	}
+	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+		_ = s.Log().Error(serveErr)
+	}
 }

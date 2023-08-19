@@ -8,7 +8,7 @@ LD_FLAGS="-w -X $(MODULE)/goapp.Version=$(VERSION) -X $(MODULE)/goapp.Commit=$(C
 MAIN="goapp/service/main/main.go"
 
 run: binary
-	@DEV=1 ./temp/$(APP_NAME)
+	@DEV=1 ADDRESS=0.0.0.0:8080 GOAPP_NO_COMPRESSION=1 ./temp/$(APP_NAME)
 
 binary: wasm
 	@mkdir -p temp
@@ -22,8 +22,3 @@ wasm:
 clean:
 	@rm -rf temp
 	@rm -f goapp/web/app.wasm
-
-# used only to build the create binary in github.com/mlctrez/goappcreate
-create:
-	@rm -f goapp/web/app.wasm
-	@go build -o temp/create .
