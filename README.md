@@ -1,9 +1,5 @@
 # goappnew
 
-<p align="center">
-  <img width="192" height="192" src="https://github.com/mlctrez/goappnew/blob/master/goapp/web/logo-192.png?raw=true">
-</p>
-
 ## Purpose
 
 A [go-app](https://go-app.dev/) project structure to bootstrap new projects or experiments.
