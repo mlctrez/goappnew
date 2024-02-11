@@ -13,7 +13,7 @@ The following features are included:
 * An application version backed by the current tag and commit hash from git.
 * A proper split between the wasm and server dependencies to reduce the final wasm size.
 * Web resources, including the `app.wasm` are embedded in the server binary during the build.
-* The server binary uses [servicego](github.com/mlctrez/servicego) to allow installation as a service on
+* The server binary uses [servicego](https://github.com/mlctrez/servicego) to allow installation as a service on
   supported platforms.
 * The [gin web framework](https://github.com/gin-gonic/gin) is included and brotli compression middleware
   is pre-configured.
