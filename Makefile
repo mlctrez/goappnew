@@ -8,12 +8,12 @@ LD_FLAGS="-w -X $(MODULE)/goapp.Version=$(VERSION) -X $(MODULE)/goapp.Commit=$(C
 MAIN="goapp/service/main/main.go"
 
 run: binary
-	@DEV=1 ADDRESS=0.0.0.0:8080 GOAPP_NO_COMPRESSION=1 ./temp/$(APP_NAME)
+	@DEV=1 PORT=8080 GOAPP_USE_COMPRESSION=1 ./temp/$(APP_NAME)
 
 binary: wasm
 	@mkdir -p temp
 	@echo "ldflags=$(LD_FLAGS)"
-	@go build -o temp/$(APP_NAME) -ldflags $(LD_FLAGS) $(MAIN)
+	@CGO_ENABLED=0 go build -o temp/$(APP_NAME) -ldflags $(LD_FLAGS) $(MAIN)
 
 wasm:
 	@rm -f goapp/web/app.wasm
