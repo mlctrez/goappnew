@@ -20,11 +20,17 @@ The following features are included:
 * It supports the wasm file size header to correctly display progress on the loading screen when using compression.
 * When running in dev mode, [app updates](https://go-app.dev/lifecycle#listen-for-app-updates) are automatic.
 * Uses just a single folder `goapp` so it can be copied into an existing codebase.
-* Less than 300 lines of code - easy to understand and modify.
+* Less than 400 lines of code - easy to understand and modify.
 
 ## Usage
 
+### V9 go-app 
 * gonew github.com/mlctrez/goappnew@v0.3.0 github.com/mlctrez/goappnewtest 
+* cd goappnewtest
+* Run `make` with no arguments to start the server in dev mode.
+
+### V10 go-app
+* gonew github.com/mlctrez/goappnew@v1.0.1 github.com/mlctrez/goappnewtest
 * cd goappnewtest
 * Run `make` with no arguments to start the server in dev mode.
 
