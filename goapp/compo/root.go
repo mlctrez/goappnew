@@ -1,7 +1,8 @@
 package compo
 
 import (
-	"github.com/maxence-charriere/go-app/v9/pkg/app"
+	"github.com/maxence-charriere/go-app/v10/pkg/app"
+	"time"
 )
 
 var _ app.AppUpdater = (*Root)(nil)
@@ -22,5 +23,18 @@ func (r *Root) OnAppUpdate(ctx app.Context) {
 }
 
 func (r *Root) OnMount(ctx app.Context) {
-
+	if app.Getenv("DEV") != "" {
+		ctx.Async(func() {
+			timer := time.NewTicker(time.Second * 3)
+			defer timer.Stop()
+			for {
+				select {
+				case <-timer.C:
+					ctx.TryUpdateApp()
+				case <-ctx.Done():
+					return
+				}
+			}
+		})
+	}
 }

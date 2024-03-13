@@ -1,7 +1,7 @@
 package compo
 
-import "github.com/maxence-charriere/go-app/v9/pkg/app"
+import "github.com/maxence-charriere/go-app/v10/pkg/app"
 
 func Routes() {
-	app.Route("/", &Root{})
+	app.Route("/", func() app.Composer { return &Root{} })
 }
