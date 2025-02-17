@@ -30,7 +30,7 @@ The following features are included:
 * Run `make` with no arguments to start the server in dev mode.
 
 ### V10 go-app
-* gonew github.com/mlctrez/goappnew@v1.0.1 github.com/mlctrez/goappnewtest
+* gonew github.com/mlctrez/goappnew@v1.0.2 github.com/mlctrez/goappnewtest
 * cd goappnewtest
 * Run `make` with no arguments to start the server in dev mode.
 
