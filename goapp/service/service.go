@@ -9,7 +9,7 @@ import (
 	brotli "github.com/anargu/gin-brotli"
 	"github.com/gin-gonic/gin"
 	"github.com/kardianos/service"
-	"github.com/maxence-charriere/go-app/v9/pkg/app"
+	"github.com/maxence-charriere/go-app/v10/pkg/app"
 	"github.com/mlctrez/goappnew/goapp"
 	"github.com/mlctrez/goappnew/goapp/compo"
 	"github.com/mlctrez/servicego"
@@ -110,15 +110,13 @@ func (s *Service) wasmSize() (wasmSize int64, err error) {
 }
 
 func (s *Service) setupHandler() (err error) {
-	s.handler = &app.Handler{Env: make(app.Environment)}
+	s.handler = &app.Handler{Env: make(map[string]string)}
 	s.handler.Scripts = make([]string, 0)
 	s.handler.Styles = make([]string, 0)
 	if s.isDev {
-		s.handler.AutoUpdateInterval = time.Second * 3
 		s.handler.Version = ""
 		s.handler.Env["DEV"] = "1"
 	} else {
-		s.handler.AutoUpdateInterval = time.Hour
 		s.handler.Version = fmt.Sprintf("%s@%s", goapp.Version, goapp.Commit)
 	}
 
