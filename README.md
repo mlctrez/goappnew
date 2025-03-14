@@ -27,16 +27,13 @@ The following features are included:
 
 ## Usage
 
-> [!NOTE]
-> Replace `github.com/mlctrez/goappnewtest` with your package
-
 ### V9 go-app 
 * gonew github.com/mlctrez/goappnew@v0.3.0 github.com/mlctrez/goappnewtest 
 * cd goappnewtest
 * Run `make` with no arguments to start the server in dev mode.
 
 ### V10 go-app
-* gonew github.com/mlctrez/goappnew@v1.0.4 github.com/mlctrez/goappnewtest
+* gonew github.com/mlctrez/goappnew@v1.0.5 github.com/mlctrez/goappnewtest
 * cd goappnewtest
 * Run `make` with no arguments to start the server in dev mode.
 
