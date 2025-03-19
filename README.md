@@ -22,7 +22,7 @@ The following features are included:
 * Uses just a single folder `goapp` so it can be copied into an existing codebase.
 * Less than 400 lines of code - easy to understand and modify.
 * Support for tinygo when building the wasm - uncomment `USE_TINY_GO=1` in Makefile
-  * Currently, go v1.23.7 and tinygo 0.36.0 must be used
+  * Currently, go v1.24.1 and tinygo 0.37.0 must be used
   * Supported only with V10 of go-app
 
 ## Usage
@@ -33,7 +33,7 @@ The following features are included:
 * Run `make` with no arguments to start the server in dev mode.
 
 ### V10 go-app
-* gonew github.com/mlctrez/goappnew@v1.0.5 github.com/mlctrez/goappnewtest
+* gonew github.com/mlctrez/goappnew@v1.0.6 github.com/mlctrez/goappnewtest
 * cd goappnewtest
 * Run `make` with no arguments to start the server in dev mode.
 
